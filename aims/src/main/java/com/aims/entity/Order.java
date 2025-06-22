@@ -1,6 +1,7 @@
 package com.aims.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class Order {
     private int orderId;
@@ -16,6 +17,15 @@ public class Order {
     private double totalAmount;
     private String status;
     private LocalDateTime createdAt;
+    private List<OrderItem> orderItems;
+
+    public List<OrderItem> getOrderItems() {
+        return orderItems;
+    }
+
+    public void setOrderItems(List<OrderItem> orderItems) {
+        this.orderItems = orderItems;
+    }
 
     public int getOrderId() {
         return orderId;

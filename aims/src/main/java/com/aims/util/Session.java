@@ -10,7 +10,7 @@ public class Session {
     public static void login(User user) {
         currentUser = user;
         if (user != null) {
-            sessionId = user.getUsername(); // Gán session_id bằng username khi đăng nhập
+            sessionId = user.getUserId()+""; // Gán session_id bằng username khi đăng nhập
         }
     }
 

@@ -1,6 +1,8 @@
 package com.aims.dao;
 
 import com.aims.entity.Order;
+import com.aims.entity.OrderItem;
+import com.aims.entity.Product;
 import com.aims.util.DatabaseConnection;
 
 import java.sql.Connection;
@@ -13,7 +15,7 @@ import java.util.List;
 public class OrderDAO {
     public List<Order> getOrders() {
         List<Order> orders = new ArrayList<>();
-        String sql = "SELECT * FROM orders";
+        String sql = "SELECT * FROM orders ORDER BY order_id ASC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             ResultSet rs = stmt.executeQuery();
@@ -52,4 +54,50 @@ public class OrderDAO {
             e.printStackTrace();
         }
     }
+    
+    public Order getOrderById(int orderId) {
+        Order order = null;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            // Lấy thông tin chính
+            String sql = "SELECT * FROM orders WHERE order_id = ?";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, orderId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                order = new Order();
+                order.setOrderId(orderId);
+                order.setRecipientName(rs.getString("recipient_name"));
+                order.setEmail(rs.getString("email"));
+                order.setDeliveryAddress(rs.getString("delivery_address"));
+                order.setStatus(rs.getString("status"));
+                order.setTotalAmount(rs.getDouble("total_amount"));
+            }
+
+            // Lấy các sản phẩm trong order
+            if (order != null) {
+                String itemSql = "SELECT oi.*, p.* FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE oi.order_id = ?";
+                PreparedStatement itemStmt = conn.prepareStatement(itemSql);
+                itemStmt.setInt(1, orderId);
+                ResultSet itemRs = itemStmt.executeQuery();
+                List<OrderItem> items = new ArrayList<>();
+                while (itemRs.next()) {
+                    Product product = new Product();
+                    product.setProductId(itemRs.getInt("product_id"));
+                    product.setTitle(itemRs.getString("title"));
+                    // (nếu cần có thể set thêm thuộc tính)
+
+                    OrderItem item = new OrderItem();
+                    item.setProduct(product);
+                    item.setQuantity(itemRs.getInt("quantity"));
+                    item.setPrice(itemRs.getDouble("price"));
+                    items.add(item);
+                }
+                order.setOrderItems(items);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return order;
+    }
+
 }

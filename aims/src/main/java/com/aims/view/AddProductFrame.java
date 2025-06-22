@@ -262,52 +262,129 @@ public class AddProductFrame extends JDialog {
 
     private void saveProduct() {
         try {
-            Product newProduct = product != null ? product : new Product();
-            newProduct.setTitle(titleField.getText().trim());
-            newProduct.setCategory((String) categoryCombo.getSelectedItem());
-            newProduct.setPrice(Double.parseDouble(priceField.getText().trim()));
-            newProduct.setValue(Double.parseDouble(valueField.getText().trim()));
-            newProduct.setStockQuantity(Integer.parseInt(stockField.getText().trim()));
-            newProduct.setWeight(Double.parseDouble(weightField.getText().trim()));
+            Product newProduct = (product != null) ? product : new Product();
+
+            // Lấy và gán dữ liệu cơ bản
+            String title = titleField.getText().trim();
+            if (!title.isEmpty()) newProduct.setTitle(title);
+            else if (product != null) newProduct.setTitle(product.getTitle());
+
+            Object selectedCategory = categoryCombo.getSelectedItem();
+            if (selectedCategory != null) {
+                newProduct.setCategory(selectedCategory.toString().toUpperCase());
+            } else if (product != null) {
+                newProduct.setCategory(product.getCategory());
+            }
+
+            String price = priceField.getText().trim();
+            if (!price.isEmpty()) newProduct.setPrice(Double.parseDouble(price));
+            else if (product != null) newProduct.setPrice(product.getPrice());
+
+            String value = valueField.getText().trim();
+            if (!value.isEmpty()) newProduct.setValue(Double.parseDouble(value));
+            else if (product != null) newProduct.setValue(product.getValue());
+
+            String stock = stockField.getText().trim();
+            if (!stock.isEmpty()) newProduct.setStockQuantity(Integer.parseInt(stock));
+            else if (product != null) newProduct.setStockQuantity(product.getStockQuantity());
+
+            String weight = weightField.getText().trim();
+            if (!weight.isEmpty()) newProduct.setWeight(Double.parseDouble(weight));
+            else if (product != null) newProduct.setWeight(product.getWeight());
+
             newProduct.setRushEligible(rushEligibleCheck.isSelected());
 
+            // Gán các trường tùy theo loại sản phẩm
             switch (newProduct.getCategory()) {
-                case "Book":
-                    newProduct.setAuthors(authorsField.getText().trim());
-                    newProduct.setCoverType(coverTypeField.getText().trim());
-                    newProduct.setPublisher(publisherField.getText().trim());
+                case "BOOK":
+                    String authors = authorsField.getText().trim();
+                    if (!authors.isEmpty()) newProduct.setAuthors(authors);
+                    else if (product != null) newProduct.setAuthors(product.getAuthors());
+
+                    String coverType = coverTypeField.getText().trim();
+                    if (!coverType.isEmpty()) newProduct.setCoverType(coverType.toUpperCase());
+                    else if (product != null) newProduct.setCoverType(product.getCoverType());
+
+                    String publisher = publisherField.getText().trim();
+                    if (!publisher.isEmpty()) newProduct.setPublisher(publisher);
+                    else if (product != null) newProduct.setPublisher(product.getPublisher());
+
                     String pubDate = publicationDateField.getText().trim();
                     if (!pubDate.isEmpty()) {
                         newProduct.setPublicationDate(LocalDate.parse(pubDate, DateTimeFormatter.ISO_LOCAL_DATE));
+                    } else if (product != null) {
+                        newProduct.setPublicationDate(product.getPublicationDate());
                     }
+
                     String numPages = numPagesField.getText().trim();
                     if (!numPages.isEmpty()) {
                         newProduct.setNumPages(Integer.parseInt(numPages));
+                    } else if (product != null) {
+                        newProduct.setNumPages(product.getNumPages());
                     }
-                    newProduct.setBookLanguage(bookLanguageField.getText().trim());
-                    newProduct.setBookGenre(bookGenreField.getText().trim());
+
+                    String bookLang = bookLanguageField.getText().trim();
+                    if (!bookLang.isEmpty()) newProduct.setBookLanguage(bookLang);
+                    else if (product != null) newProduct.setBookLanguage(product.getBookLanguage());
+
+                    String bookGenre = bookGenreField.getText().trim();
+                    if (!bookGenre.isEmpty()) newProduct.setBookGenre(bookGenre);
+                    else if (product != null) newProduct.setBookGenre(product.getBookGenre());
                     break;
+
                 case "CD":
-                case "LP_Record":
-                    newProduct.setArtists(artistsField.getText().trim());
-                    newProduct.setRecordLabel(recordLabelField.getText().trim());
-                    newProduct.setTracklist(tracklistField.getText().trim());
-                    newProduct.setMusicGenre(musicGenreField.getText().trim());
+                case "LP_RECORD":
+                    String artists = artistsField.getText().trim();
+                    if (!artists.isEmpty()) newProduct.setArtists(artists);
+                    else if (product != null) newProduct.setArtists(product.getArtists());
+
+                    String label = recordLabelField.getText().trim();
+                    if (!label.isEmpty()) newProduct.setRecordLabel(label);
+                    else if (product != null) newProduct.setRecordLabel(product.getRecordLabel());
+
+                    String tracklist = tracklistField.getText().trim();
+                    if (!tracklist.isEmpty()) newProduct.setTracklist(tracklist);
+                    else if (product != null) newProduct.setTracklist(product.getTracklist());
+
+                    String genre = musicGenreField.getText().trim();
+                    if (!genre.isEmpty()) newProduct.setMusicGenre(genre);
+                    else if (product != null) newProduct.setMusicGenre(product.getMusicGenre());
+
                     String relDate = releaseDateField.getText().trim();
                     if (!relDate.isEmpty()) {
                         newProduct.setReleaseDate(LocalDate.parse(relDate, DateTimeFormatter.ISO_LOCAL_DATE));
+                    } else if (product != null) {
+                        newProduct.setReleaseDate(product.getReleaseDate());
                     }
                     break;
+
                 case "DVD":
-                    newProduct.setDirector(directorField.getText().trim());
+                    String director = directorField.getText().trim();
+                    if (!director.isEmpty()) newProduct.setDirector(director);
+                    else if (product != null) newProduct.setDirector(product.getDirector());
+
                     String runtime = runtimeField.getText().trim();
                     if (!runtime.isEmpty()) {
                         newProduct.setRuntime(Integer.parseInt(runtime));
+                    } else if (product != null) {
+                        newProduct.setRuntime(product.getRuntime());
                     }
-                    newProduct.setStudio(studioField.getText().trim());
-                    newProduct.setDvdLanguage(dvdLanguageField.getText().trim());
-                    newProduct.setSubtitles(subtitlesField.getText().trim());
-                    newProduct.setDiscType(discTypeField.getText().trim());
+
+                    String studio = studioField.getText().trim();
+                    if (!studio.isEmpty()) newProduct.setStudio(studio);
+                    else if (product != null) newProduct.setStudio(product.getStudio());
+
+                    String lang = dvdLanguageField.getText().trim();
+                    if (!lang.isEmpty()) newProduct.setDvdLanguage(lang);
+                    else if (product != null) newProduct.setDvdLanguage(product.getDvdLanguage());
+
+                    String subtitles = subtitlesField.getText().trim();
+                    if (!subtitles.isEmpty()) newProduct.setSubtitles(subtitles);
+                    else if (product != null) newProduct.setSubtitles(product.getSubtitles());
+
+                    String discType = discTypeField.getText().trim();
+                    if (!discType.isEmpty()) newProduct.setDiscType(discType.toUpperCase());
+                    else if (product != null) newProduct.setDiscType(product.getDiscType());
                     break;
             }
 
@@ -323,6 +400,7 @@ public class AddProductFrame extends JDialog {
             JOptionPane.showMessageDialog(this, "Product saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             parentFrame.loadProductList();
             dispose();
+
         } catch (NumberFormatException | DateTimeParseException e) {
             JOptionPane.showMessageDialog(this, "Invalid input format. Please check numbers and dates.", "Error", JOptionPane.ERROR_MESSAGE);
         } catch (Exception e) {

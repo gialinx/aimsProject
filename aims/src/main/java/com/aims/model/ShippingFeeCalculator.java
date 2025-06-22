@@ -12,7 +12,11 @@ public class ShippingFeeCalculator {
         }
         
         boolean isHanoiOrHCM = order.getProvinceCity().equalsIgnoreCase("Hanoi") || 
-                               order.getProvinceCity().equalsIgnoreCase("Ho Chi Minh City");
+                               order.getProvinceCity().equalsIgnoreCase("Ha Noi") ||
+                               order.getProvinceCity().equalsIgnoreCase("Hà Nội") ||
+                               order.getProvinceCity().equalsIgnoreCase("Ho Chi Minh City") ||
+                               order.getProvinceCity().equalsIgnoreCase("Ho Chi Minh") ||
+                               order.getProvinceCity().equalsIgnoreCase("Hồ Chí Minh");
         double fee = 0;
         
         if (isHanoiOrHCM) {

@@ -1,20 +1,43 @@
 package com.aims.view;
 
-import com.aims.controller.CartController;
-import com.aims.dao.CartDAO;
-import com.aims.entity.CartItem;
-import com.aims.util.Session;
-import com.aims.util.DatabaseConnection;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Desktop;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Pattern;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+
+import com.aims.controller.CartController;
+import com.aims.controller.VNPayController;
+import com.aims.controller.VNPayReturnServer;
+import com.aims.dao.CartDAO;
+import com.aims.entity.CartItem;
+import com.aims.entity.Order;
+import com.aims.entity.OrderItem;
+import com.aims.model.ShippingFeeCalculator;
+import com.aims.util.DatabaseConnection;
+import com.aims.util.Session;
 
 public class CartFrame extends JFrame {
     private List<ProductPanel> productList = new ArrayList<>();
@@ -147,8 +170,14 @@ public class CartFrame extends JFrame {
                 displayProducts();
             }
         });
-        loginButton.addActionListener(e -> new LoginFrame(this).setVisible(true));
-        signupButton.addActionListener(e -> new SignupFrame(this).setVisible(true));
+        loginButton.addActionListener(e -> {
+        	new LoginFrame(this).setVisible(true);
+        	dispose();
+        });
+        signupButton.addActionListener(e -> {
+        	new SignupFrame(this).setVisible(true);
+        	dispose();
+        });
         profileButton.addActionListener(e -> new ProfileFrame().setVisible(true));
         logoutButton.addActionListener(e -> {
             Session.logout();
@@ -180,7 +209,6 @@ public class CartFrame extends JFrame {
         });
         ordersButton.addActionListener(e -> {
             if (Session.getRole() != null && Session.getRole().equals("PRODUCT_MANAGER")) {
-                dispose();
                 new OrderFrame().setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Only Product Managers can view orders.");
@@ -188,7 +216,6 @@ public class CartFrame extends JFrame {
         });
         adminButton.addActionListener(e -> {
             if (Session.getRole() != null && Session.getRole().equals("ADMIN")) {
-                dispose();
                 new AdminFrame().setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Only Admins can access this panel.");
@@ -307,78 +334,163 @@ public class CartFrame extends JFrame {
     
     
     private void processPurchase() {
-        if (!Session.isLoggedIn()) {
-            JOptionPane.showMessageDialog(this, "You must log in to make a purchase.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+//        if (!Session.isLoggedIn()) {
+//            JOptionPane.showMessageDialog(this, "You must log in to make a purchase.", "Error", JOptionPane.ERROR_MESSAGE);
+//            return;
+//        }
         if (totalPrice <= 0.01) {
             JOptionPane.showMessageDialog(this, "Your cart is empty.", "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        // Step 1: Check inventory
+        List<String> insufficientStock = new ArrayList<>();
+        List<OrderItem> cartItems = new ArrayList<>();
+        for (ProductPanel panel : productList) {
+            int quantity = panel.getQuantity();
+            if (quantity > panel.getProduct().getStockQuantity()) {
+                insufficientStock.add(panel.getProduct().getTitle()+ " " + panel.getProduct().getStockQuantity() + " remains");
+            } else {
+                OrderItem item = new OrderItem();
+                item.setProduct(panel.getProduct());
+                item.setQuantity(quantity);
+                item.setPrice(panel.getProduct().getPrice());
+                cartItems.add(item);
+            }
+        }
+        if (!insufficientStock.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "The following products are out of stock or insufficient:\n" + String.join("\n", insufficientStock), "Stock Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Step 2: Get shipping info
         JTextField recipientNameField = new JTextField();
-        JTextField emailField = new JTextField(Session.getCurrentUser().getEmail());
+        JTextField emailField = new JTextField();
         JTextField phoneField = new JTextField();
         JTextField deliveryAddressField = new JTextField();
         JTextField provinceCityField = new JTextField();
         JCheckBox rushCheckbox = new JCheckBox("Rush Delivery");
+        JTextField rushTimeField = new JTextField(20); // thêm vào form
+
+        
         Object[] inputFields = {
             "Recipient Name:", recipientNameField,
             "Email:", emailField,
             "Phone Number:", phoneField,
             "Delivery Address:", deliveryAddressField,
             "Province/City:", provinceCityField,
-            "Rush Delivery:", rushCheckbox
+            "Rush Delivery:", rushCheckbox,
+            "Rush Delivery time (yyyy-MM-dd HH:mm):", rushTimeField
         };
         int option = JOptionPane.showConfirmDialog(this, inputFields, "Enter Shipping Information", JOptionPane.OK_CANCEL_OPTION);
-        if (option == JOptionPane.OK_OPTION) {
-            String recipientName = recipientNameField.getText().trim();
-            String email = emailField.getText().trim();
-            String phone = phoneField.getText().trim();
-            String deliveryAddress = deliveryAddressField.getText().trim();
-            String provinceCity = provinceCityField.getText().trim();
-            boolean isRushDelivery = rushCheckbox.isSelected();
+        if (option != JOptionPane.OK_OPTION) return;
 
-            if (recipientName.isEmpty() || email.isEmpty() || phone.isEmpty() || deliveryAddress.isEmpty() || provinceCity.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
+        String recipientName = recipientNameField.getText().trim();
+        String email = emailField.getText().trim();
+        String phone = phoneField.getText().trim();
+        String deliveryAddress = deliveryAddressField.getText().trim();
+        String provinceCity = provinceCityField.getText().trim();
+        boolean isRushDelivery = rushCheckbox.isSelected();
+
+        if (recipientName.isEmpty() || email.isEmpty() || phone.isEmpty() || deliveryAddress.isEmpty() || provinceCity.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!Pattern.matches("^[A-Za-z0-9+_.-]+@(.+)$", email)) {
+            JOptionPane.showMessageDialog(this, "Invalid email format.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!Pattern.matches("^0[0-9]{9}$", phone)) {
+            JOptionPane.showMessageDialog(this, "Invalid phone number. Must start with 0 and have 10 digits.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Step 3: Select rush eligible products
+        List<OrderItem> rushItems = new ArrayList<>();
+        if (isRushDelivery) {
+            JPanel panel = new JPanel(new GridLayout(0, 1));
+            List<JCheckBox> rushCheckboxes = new ArrayList<>();
+            for (OrderItem item : cartItems) {
+                if (item.getProduct().isRushEligible()) {
+                    JCheckBox cb = new JCheckBox(item.getProduct().getTitle());
+                    rushCheckboxes.add(cb);
+                    panel.add(cb);
+                }
             }
-
-            String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-            if (!Pattern.matches(emailRegex, email)) {
-                JOptionPane.showMessageDialog(this, "Invalid email format.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            StringBuilder purchaseDetails = new StringBuilder();
-            purchaseDetails.append("Purchase Details:\n\n");
-            purchaseDetails.append("Buyer: ").append(Session.getSessionId()).append("\n");
-            purchaseDetails.append("Recipient: ").append(recipientName).append("\n");
-            purchaseDetails.append("Email: ").append(email).append("\n");
-            purchaseDetails.append("Phone Number: ").append(phone).append("\n");
-            purchaseDetails.append("Delivery Address: ").append(deliveryAddress).append("\n");
-            purchaseDetails.append("Province/City: ").append(provinceCity).append("\n");
-            purchaseDetails.append("Rush Delivery: ").append(isRushDelivery ? "Yes" : "No").append("\n\n");
-            purchaseDetails.append("Items:\n");
-            for (ProductPanel panel : productList) {
-                purchaseDetails.append(String.format("- %s | Price: %.2f VND | Quantity: %d\n",
-                        panel.getProduct().getTitle(), panel.getProduct().getPrice(), panel.getQuantity()));
-            }
-            purchaseDetails.append(String.format("\nTotal: %.2f VND", totalPrice));
-
-            int confirmOption = JOptionPane.showConfirmDialog(this,
-                    new Object[]{new JScrollPane(new JTextArea(purchaseDetails.toString(), 15, 40))},
-                    "Confirm Purchase", JOptionPane.OK_CANCEL_OPTION);
-            if (confirmOption == JOptionPane.OK_OPTION) {
-                try {
-                    cartController.completePurchase(Session.getSessionId(), recipientName, email, phone, deliveryAddress, provinceCity, isRushDelivery, totalPrice);
-                    JOptionPane.showMessageDialog(this, "Purchase completed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    loadProductList();
-                } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this, "Purchase failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    e.printStackTrace();
+            if (rushCheckboxes.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No products in your cart support rush delivery.", "Notice", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                int rushOption = JOptionPane.showConfirmDialog(this, panel, "Select Rush Delivery Items", JOptionPane.OK_CANCEL_OPTION);
+                if (rushOption != JOptionPane.OK_OPTION) return;
+                for (int i = 0; i < rushCheckboxes.size(); i++) {
+                    if (rushCheckboxes.get(i).isSelected()) {
+                        rushItems.add(cartItems.get(i));
+                    }
                 }
             }
         }
+
+        // Step 4: Calculate shipping fee
+        Order tempOrder = new Order();
+        tempOrder.setProvinceCity(provinceCity);
+        tempOrder.setRushDelivery(isRushDelivery);
+        double deliveryFee = ShippingFeeCalculator.calculateShippingFee(tempOrder, cartItems);
+
+        // Step 5: Summary & payment method
+        StringBuilder sb = new StringBuilder();
+        sb.append("Order Summary:\n\n");
+        sb.append("Recipient: ").append(recipientName).append("\n");
+        sb.append("Email: ").append(email).append("\n");
+        sb.append("Phone: ").append(phone).append("\n");
+        sb.append("Address: ").append(deliveryAddress).append(", ").append(provinceCity).append("\n");
+        sb.append("Rush Delivery: ").append(isRushDelivery ? "Yes" : "No").append("\n");
+        sb.append("Delivery Fee: ").append(deliveryFee).append(" VND\n\n");
+        sb.append("Items:\n");
+        for (OrderItem item : cartItems) {
+            sb.append(" - ").append(item.getProduct().getTitle())
+              .append(" x").append(item.getQuantity())
+              .append(" @ ").append(item.getPrice()).append(" VND\n");
+        }
+        double totalAmount = cartItems.stream().mapToDouble(i -> i.getPrice() * i.getQuantity()).sum() + deliveryFee;
+        sb.append("\nTotal Amount: ").append(totalAmount).append(" VND\n\n");
+        String[] paymentOptions = {"VNPay", "Cash On Delivery"};
+        JComboBox<String> paymentBox = new JComboBox<>(paymentOptions);
+        int confirm = JOptionPane.showConfirmDialog(this, new Object[]{new JScrollPane(new JTextArea(sb.toString(), 15, 40)), "Payment Method:", paymentBox}, "Confirm Order", JOptionPane.OK_CANCEL_OPTION);
+        if (confirm != JOptionPane.OK_OPTION) return;
+
+        String selectedPayment = (String) paymentBox.getSelectedItem();
+        String rushDeliveryTime = rushTimeField.getText().trim();
+        
+        if ("VNPay".equals(selectedPayment)) {
+            String orderId = UUID.randomUUID().toString().substring(0, 8).toUpperCase(); // Tạo mã đơn hàng
+            double totalVNPayAmount = totalAmount;
+
+            try {
+                // 1. Start mini HTTP server để chờ callback từ VNPay
+            	VNPayReturnServer.startVNPayReturnServer(orderId, totalVNPayAmount, () -> {
+                    // Chỉ chạy completePurchase sau khi thanh toán thành công
+                    try {
+                    	cartController.completePurchase(Session.getCurrentUser() != null ? Session.getCurrentUser().getUserId() : null, Session.getSessionId(), recipientName, email, phone, deliveryAddress, provinceCity, isRushDelivery, rushDeliveryTime, totalAmount, deliveryFee, cartItems, rushItems, selectedPayment);
+                        JOptionPane.showMessageDialog(this, "Order placed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        loadProductList();
+                    } catch (SQLException e) {
+                        JOptionPane.showMessageDialog(this, "Error completing order: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        e.printStackTrace();
+                    }
+                });
+
+                // 2. Mở VNPay URL
+                String paymentUrl = VNPayController.createVNPayUrl(orderId, totalVNPayAmount);
+                Desktop.getDesktop().browse(new URI(paymentUrl));
+                return;
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "VNPay payment error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
     }
+
 }

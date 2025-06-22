@@ -30,7 +30,7 @@ public class ProductDAO {
 	    String role = Session.getRole();
 	    System.out.printf("role %s",role,"\n");
 	    if(!("product_manager".equalsIgnoreCase(role))) {
-	    	sql.append(" AND available = 'yes'");
+	    	sql.append(" AND available = 'YES'");
 	    }
 	    
 	    // Sắp xếp (phải đảm bảo sortColumn và sortOrder là hợp lệ, hoặc lọc trước)
@@ -97,6 +97,7 @@ public class ProductDAO {
                 product.setStudio(rs.getString("studio"));
                 product.setDvdLanguage(rs.getString("dvd_language"));
                 product.setSubtitles(rs.getString("subtitles"));
+                product.setAvailable(rs.getString("available"));
                 return product;
             }
         } catch (SQLException e) {
@@ -109,7 +110,7 @@ public class ProductDAO {
         String sql = "INSERT INTO products (title, category, value, price, stock_quantity, is_rush_eligible, weight, " +
                      "authors, cover_type, publisher, publication_date, num_pages, book_language, book_genre, " +
                      "artists, record_label, tracklist, music_genre, release_date, disc_type, director, runtime, " +
-                     "studio, dvd_language, subtitles, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     "studio, dvd_language, subtitles, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, product.getTitle());
@@ -217,4 +218,27 @@ public class ProductDAO {
             e.printStackTrace();
         }
     }
+    
+    public void changeAvailable(int productId, String status, int userId) {
+        String sql = "UPDATE products SET available = ?, updated_at = CURRENT_TIMESTAMP WHERE product_id = ?";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, status.toUpperCase());
+            stmt.setInt(2, productId);
+
+            int rowsUpdated = stmt.executeUpdate();
+            if (rowsUpdated > 0) {
+                System.out.println("Product availability updated successfully by user ID: " + userId);
+            } else {
+                System.out.println("No product found with ID: " + productId);
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error updating product availability: " + e.getMessage());
+        }
+    }
+
 }

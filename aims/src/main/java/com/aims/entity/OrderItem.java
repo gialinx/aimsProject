@@ -2,11 +2,14 @@ package com.aims.entity;
 
 public class OrderItem {
     private int orderItemId;
-    private int orderId;
+    private String title;
+
+	private int orderId;
     private int productId;
     private int quantity;
     private double price;
     private Product product;
+    private boolean isRush;
 	
     // Constructor
     public OrderItem() {}
@@ -21,6 +24,18 @@ public class OrderItem {
 	}
 	
     // Getters and Setters
+    public String getTitle() {
+		return title;
+	}
+	public boolean isRush() {
+		return isRush;
+	}
+	public void setRush(boolean isRush) {
+		this.isRush = isRush;
+	}
+	public void setTitle(String title) {
+		this.title = title;
+	}
     public int getOrderItemId() {
 		return orderItemId;
 	}

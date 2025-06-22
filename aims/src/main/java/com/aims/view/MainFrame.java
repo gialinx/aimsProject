@@ -178,7 +178,6 @@ public class MainFrame extends JFrame {
         });
         ordersButton.addActionListener(e -> {
             if (Session.getRole() != null && Session.getRole().equals("PRODUCT_MANAGER")) {
-                dispose();
                 new OrderFrame().setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Only Product Managers can view orders.");

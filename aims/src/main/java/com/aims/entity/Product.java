@@ -35,13 +35,14 @@ public class Product {
     private String studio;
     private String dvdLanguage;
     private String subtitles;
+    private String available;
 
     // Constructor
     public Product() {}
 
     public Product(int productId, String title, String category, double value, double price, 
                    int stockQuantity, boolean isRushEligible, double weight, 
-                   LocalDateTime createdAt, LocalDateTime updatedAt) {
+                   LocalDateTime createdAt, LocalDateTime updatedAt, String available) {
         this.productId = productId;
         this.title = title;
         this.category = category;
@@ -52,9 +53,18 @@ public class Product {
         this.weight = weight;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.available = available;
     }
 
-    // Getters and Setters
+    public String getAvailable() {
+		return available;
+	}
+
+	public void setAvailable(String available) {
+		this.available = available;
+	}
+
+	// Getters and Setters
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }
     public String getTitle() { return title; }

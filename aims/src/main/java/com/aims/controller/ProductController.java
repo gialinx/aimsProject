@@ -39,4 +39,12 @@ public class ProductController {
         productDAO.deleteProduct(productId);
         productDAO.logProductHistory(productId, "DELETE", "Deleted product: " + product.getTitle(), userId);
     }
+    
+    public void changeAvailable(Product product, String status, int userId) {
+    	productDAO.changeAvailable(product.getProductId(), status, userId);
+    	if(status.equalsIgnoreCase("YES"))
+    		productDAO.logProductHistory(product.getProductId(), "SHOW", "Deleted product: " + product.getTitle(), userId);
+    	else
+    		productDAO.logProductHistory(product.getProductId(), "HIDE", "Deleted product: " + product.getTitle(), userId);
+    }
 }

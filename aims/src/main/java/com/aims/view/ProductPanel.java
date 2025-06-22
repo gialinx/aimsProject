@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.time.LocalDateTime;
 
 public class ProductPanel extends JPanel {
     private Product product;
@@ -63,6 +64,7 @@ public class ProductPanel extends JPanel {
         product.setStudio(rs.getString("studio"));
         product.setDvdLanguage(rs.getString("dvd_language"));
         product.setSubtitles(rs.getString("subtitles"));
+        product.setAvailable(rs.getString("available"));
         
         // -------------
         return new ProductPanel(product, 0, mainFrame, null);
@@ -78,17 +80,16 @@ public class ProductPanel extends JPanel {
         setBorder(BorderFactory.createLineBorder(Color.GRAY));
         setPreferredSize(new Dimension(250, 190));
 
-        // Hiển thị thông tin chi tiết sản phẩm
         JLabel titleLabel = new JLabel(product.getTitle(), SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        
+
         JLabel categoryLabel = new JLabel("Category: " + product.getCategory(), SwingConstants.CENTER);
         JLabel priceLabel = new JLabel(String.format("Price: %.2f VND", product.getPrice()), SwingConstants.CENTER);
         JLabel stockLabel = new JLabel("Stock: " + product.getStockQuantity(), SwingConstants.CENTER);
         JLabel rushLabel = new JLabel(product.isRushEligible() ? "Rush Eligible" : "Standard Delivery", SwingConstants.CENTER);
         JLabel quantityLabel = quantity > 0 ? new JLabel("Quantity: " + quantity, SwingConstants.CENTER) : new JLabel("");
 
-        JPanel infoPanel = new JPanel(new GridLayout(6, 1));
+        JPanel infoPanel = new JPanel(new GridLayout(7, 1)); // Tăng số hàng lên 7 để thêm dòng mới
         infoPanel.add(titleLabel);
         infoPanel.add(categoryLabel);
         infoPanel.add(priceLabel);
@@ -96,9 +97,14 @@ public class ProductPanel extends JPanel {
         infoPanel.add(rushLabel);
         infoPanel.add(quantityLabel);
 
+        // Hiển thị dòng "Available" nếu là product manager
+        if (Session.isLoggedIn() && "PRODUCT_MANAGER".equals(Session.getRole())) {
+            JLabel availableLabel = new JLabel("Available: " + (product.getAvailable().equalsIgnoreCase("YES") ? "YES" : "NO"), SwingConstants.CENTER);
+            infoPanel.add(availableLabel);
+        }
+
         JPanel buttonPanel = new JPanel(new FlowLayout());
 
-        // Nút "Detail"
         JButton detailButton = new JButton("Detail");
         detailButton.addActionListener(e -> showProductDetail());
         buttonPanel.add(detailButton);
@@ -110,17 +116,34 @@ public class ProductPanel extends JPanel {
 
             if (Session.isLoggedIn() && "PRODUCT_MANAGER".equals(Session.getRole())) {
                 JButton editButton = new JButton("Edit");
-                JButton deleteButton = new JButton("Delete");
+                
+                String toggleLabel = product.getAvailable().equalsIgnoreCase("yes") ? "Hide" : "Show";
+                JButton toggleButton = new JButton(toggleLabel);
+
                 editButton.addActionListener(e -> new AddProductFrame(mainFrame, product).setVisible(true));
-                deleteButton.addActionListener(e -> {
-                    int confirm = JOptionPane.showConfirmDialog(this, "Delete this product?", "Confirm", JOptionPane.YES_NO_OPTION);
+
+                toggleButton.addActionListener(e -> {
+                    int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        (product.getAvailable().equalsIgnoreCase("yes") ? "Hide" : "Show") + " this product?",
+                        "Confirm",
+                        JOptionPane.YES_NO_OPTION
+                    );
                     if (confirm == JOptionPane.YES_OPTION) {
-                        mainFrame.getProductController().deleteProduct(product.getProductId(), Session.getCurrentUser().getUserId());
-                        mainFrame.loadProductList();
+                        product.setAvailable(product.getAvailable().equalsIgnoreCase("yes") ? "no": "yes");
+                        product.setUpdatedAt(LocalDateTime.now());
+
+                        try {
+                            mainFrame.getProductController().changeAvailable(product, product.getAvailable(), Session.getCurrentUser().getUserId());
+                            mainFrame.loadProductList();
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(this, "Error updating availability: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        }
                     }
                 });
+
                 buttonPanel.add(editButton);
-                buttonPanel.add(deleteButton);
+                buttonPanel.add(toggleButton);
             }
         } else if (cartFrame != null) {
             JButton updateButton = new JButton("Update");
@@ -134,6 +157,7 @@ public class ProductPanel extends JPanel {
         add(infoPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
     }
+
 
     private void showProductDetail() {
         StringBuilder detail = new StringBuilder();

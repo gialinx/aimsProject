@@ -23,4 +23,9 @@ public class OrderController {
         orderDAO.updateOrderStatus(orderId, status);
         view.loadOrders();
     }
+    
+    public Order getOrderById(int orderId) {
+        return orderDAO.getOrderById(orderId);
+    }
+
 }

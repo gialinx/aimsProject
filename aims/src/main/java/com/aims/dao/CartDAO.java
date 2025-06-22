@@ -186,6 +186,7 @@ public class CartDAO {
                 product.setStudio(rs.getString("studio"));
                 product.setDvdLanguage(rs.getString("dvd_language"));
                 product.setSubtitles(rs.getString("subtitles"));
+                product.setAvailable(rs.getString("available"));
                 item.setProduct(product);
                 cartItems.add(item);
             }
